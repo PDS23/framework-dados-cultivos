@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Byte-compile all pipeline scripts (syntax check)
+        run: python -m py_compile executar_pipeline.py $(find src -name "*.py")
+
+      - name: Validate config/culturas.yaml loads correctly
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, "src/comum")
+          from config import carregar_culturas
+
+          culturas = carregar_culturas()
+          assert culturas, "config/culturas.yaml loaded no cultures"
+          for slug, cfg in culturas.items():
+              assert "nome_sidra" in cfg, f"{slug}: missing nome_sidra"
+              assert "uf_recorte" in cfg, f"{slug}: missing uf_recorte"
+          print(f"OK - {len(culturas)} cultures validated: {', '.join(culturas)}")
+          PY
+
+      - name: Validate relatorios/build_docx.js parses
+        run: node --check relatorios/build_docx.js

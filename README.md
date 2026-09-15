@@ -1,108 +1,115 @@
 # framework-dados-cultivos
 
-Framework em Python para analisar a evolução espacial de qualquer cultura
-agrícola brasileira cruzando duas fontes públicas de cobertura nacional:
+[![License: MIT](https://img.shields.io/github/license/PDS23/framework-dados-cultivos)](LICENSE)
+[![CI](https://github.com/PDS23/framework-dados-cultivos/actions/workflows/ci.yml/badge.svg)](https://github.com/PDS23/framework-dados-cultivos/actions/workflows/ci.yml)
 
-- **IBGE** (SIDRA, Tabela 1613 — Produção Agrícola Municipal): levantamento
-  declarado, por município, com série histórica desde 1974.
-- **MapBiomas** (Coleção de uso e cobertura da terra): classificação por
-  imagem de satélite, por município, com série desde 1985 — mas só nos
-  estados onde a classe da cultura tem registro.
+🇺🇸 English | [🇧🇷 Português](README.pt-BR.md)
 
-Nasceu de um estudo de caso completo sobre **citricultura** (laranja, limão
-e tangerina) — ver `examples/citros/` para o resultado final (mapas,
-tabelas e relatório consolidado). O código foi generalizado depois para
-poder ser aplicado a qualquer outra cultura com cobertura nas duas fontes.
+Python framework for analyzing the spatial evolution of any Brazilian
+agricultural crop by cross-referencing two public, nationwide data sources:
 
-## Metodologia: duas janelas, duas escalas geográficas
+- **IBGE** (SIDRA, Table 1613 — Municipal Agricultural Production): declared
+  survey data, by municipality, with a historical series back to 1974.
+- **MapBiomas** (land use and land cover collection): satellite-imagery
+  classification, by municipality, with a series back to 1985 — but only in
+  the states where the crop's class has any record.
 
-| | Janela histórica | Janela recente (2015-2024) |
+Born out of a complete case study on **Brazilian citrus growing** (orange,
+lemon and tangerine) — see `examples/citros/` for the final output (maps,
+tables, and consolidated report). The code was later generalized so it can
+be applied to any other crop covered by both sources.
+
+## Methodology: two windows, two geographic scales
+
+| | Historical window | Recent window (2015-2024) |
 |---|---|---|
-| **Escala** | Nacional (ou tão ampla quanto a fonte cobre) | Regional (onde a cultura se concentra) |
-| **IBGE** | Desde 1974, Brasil inteiro | Recorte configurável por UF |
-| **MapBiomas** | Desde 1985, estados com a classe | Mesmo recorte automático |
+| **Scale** | National (as far back as each source allows) | Regional (where the crop actually concentrates) |
+| **IBGE** | Since 1974, all of Brazil | Configurable state-level cutout |
+| **MapBiomas** | Since 1985, states with the class | Same cutout, detected automatically |
 
-A ideia central: a série mais longa disponível em cada fonte é usada em
-escala nacional, para dar contexto histórico; a comparação fina (por
-variável, por município, com categorias de "novo produtor"/"saiu") é feita
-só na janela recente e só na região onde a produção de fato existe — assim
-os mapas não ficam poluídos com o país inteiro em cinza.
+Core idea: the longest series available in each source is used at national
+scale, to give historical context; the fine-grained comparison (per
+variable, per municipality, with "new producer"/"exited" categories) is only
+done in the recent window and only in the region where production actually
+exists — so the maps aren't cluttered with the whole country greyed out.
 
-Cada produto de mapa segue o mesmo padrão visual: gráfico de linha indexado
-a 100% no primeiro ano da janela, tabela de valores absolutos, e mapa(s)
-coropléticos com escala de cor divergente (fria = queda, quente = alta).
+Every map product follows the same visual pattern: a line chart indexed to
+100% at the first year of the window, a table of absolute values, and
+choropleth map(s) with a diverging color scale (cool = decline, warm =
+growth).
 
-## Estrutura do repositório
+## Repository structure
 
 ```
-config/culturas.yaml       — cadastro de culturas (nome no SIDRA, classe MapBiomas, recorte regional)
-src/comum/                 — utilitários compartilhados (paths, deflator IPCA, classificação em faixas)
-src/ibge/01..06            — pipeline IBGE, na ordem
-src/mapbiomas/01..05       — pipeline MapBiomas, na ordem
-relatorios/build_docx.js   — gera .docx a partir das tabelas de faixas
-docs/                      — guia de adaptação para nova cultura
-examples/citros/           — resultado final do estudo de caso citros (mapas + relatório + apresentação)
-data/                      — não versionado; populado localmente ao rodar o pipeline
+config/culturas.yaml       — crop registry (SIDRA name, MapBiomas class, regional cutout)
+src/comum/                 — shared utilities (paths, IPCA deflator, range classification)
+src/ibge/01..06            — IBGE pipeline, in order
+src/mapbiomas/01..05       — MapBiomas pipeline, in order
+relatorios/build_docx.js   — generates .docx from the range-classification tables
+docs/                      — guide for adapting the framework to a new crop
+examples/citros/           — final output of the citrus case study (maps + report + slide deck)
+data/                      — not version-controlled; populated locally when the pipeline runs
 ```
 
-## Como rodar (exemplo: reproduzir citros)
+## How to run it (example: reproducing the citrus study)
 
 ```bash
-python -m venv .venv && source .venv/bin/activate   # ou .venv\Scripts\activate no Windows
+python -m venv .venv && source .venv/bin/activate   # or .venv\Scripts\activate on Windows
 pip install -r requirements.txt
 
-# 1. Baixe os dados brutos (ver docs/COMO_ADAPTAR_NOVA_CULTURA.md, seções 1-2)
-#    e coloque em:
+# 1. Download the raw data (see docs/COMO_ADAPTAR_NOVA_CULTURA.md, sections 1-2,
+#    currently in Portuguese) and place it at:
 #      data/brutos/ibge/laranja/*.xlsx
 #      data/mapbiomas/brutos/MAPBIOMAS_BRAZIL-COL.11-BIOME_STATE_MUNICIPALITY.xlsx
-#    Baixe também o shapefile de municípios do IBGE e coloque em:
+#    Also download the IBGE municipal shapefile and place it at:
 #      data/geo/malha_municipios_brasil.shp
 
-# 2. Rode o pipeline completo pra 1 cultura
+# 2. Run the full pipeline for 1 crop
 python executar_pipeline.py laranja
 
-# 3. (opcional) gere os .docx das tabelas de faixas
+# 3. (optional) generate the .docx range-classification reports
 cd relatorios && npm install
-node build_docx.js ../data/ibge/relatorios/laranja/faixas_2015_2024.json "Variação percentual — Laranja"
+node build_docx.js ../data/ibge/relatorios/laranja/faixas_2015_2024.json "Percent change — Orange"
 ```
 
-Saídas ficam em `data/ibge/mapas/laranja/`, `data/mapbiomas/mapas/laranja/`
-e nos `relatorios/` correspondentes.
+Outputs land in `data/ibge/mapas/laranja/`, `data/mapbiomas/mapas/laranja/`,
+and the corresponding `relatorios/` folders.
 
-## Adaptar para outra cultura
+## Adapting to another crop
 
-Veja [`docs/COMO_ADAPTAR_NOVA_CULTURA.md`](docs/COMO_ADAPTAR_NOVA_CULTURA.md)
-— passo a passo completo: achar a tabela certa no SIDRA, achar a classe
-certa no MapBiomas, cadastrar em `config/culturas.yaml`, rodar. `culturas.yaml`
-já vem com entradas de exemplo prontas para café, soja, cana-de-açúcar,
-milho e algodão (config pronta; dados brutos não incluídos neste repositório).
+See [`docs/COMO_ADAPTAR_NOVA_CULTURA.md`](docs/COMO_ADAPTAR_NOVA_CULTURA.md)
+(currently Portuguese-only) for the full walkthrough: finding the right
+SIDRA table, finding the right MapBiomas class, registering it in
+`config/culturas.yaml`, and running the pipeline. `culturas.yaml` already
+ships with ready-made example entries for coffee, soybeans, sugarcane, corn
+and cotton (config only; raw data not included in this repository).
 
-## Limitações conhecidas
+## Known limitations
 
-- As duas fontes medem coisas conceitualmente diferentes (declarado vs.
-  detectado por satélite) — não são comparáveis em valor absoluto, só em
-  direção/intensidade de tendência.
-- O MapBiomas não garante classe própria para toda cultura — várias culturas
-  anuais menores caem em classes agregadas ("Outras Lavouras Temporárias/
-  Perenes"). Ver `docs/COMO_ADAPTAR_NOVA_CULTURA.md`.
-- A malha municipal do IBGE muda ao longo do tempo (criação/fusão de
-  municípios); o framework usa a malha mais recente para todos os anos, o
-  que é uma simplificação comum nesse tipo de análise mas vale documentar.
-- Valores monetários (IBGE) são deflacionados pelo IPCA (`src/comum/deflator_ipca.py`);
-  a série pronta cobre 2015-2024 — estenda-a para outras janelas se precisar.
+- The two sources measure conceptually different things (declared vs.
+  satellite-detected) — not comparable in absolute value, only in the
+  direction/intensity of the trend.
+- MapBiomas doesn't guarantee a dedicated class for every crop — several
+  smaller annual crops fall into aggregated classes ("Other Temporary/
+  Perennial Crops"). See the adaptation guide.
+- The IBGE municipal mesh changes over time (municipalities are created or
+  merged); the framework uses the most recent mesh for all years, a common
+  simplification in this kind of analysis but worth documenting.
+- Monetary values (IBGE) are deflated using IPCA (`src/comum/deflator_ipca.py`);
+  the ready-made series covers 2015-2024 — extend it for other windows if needed.
 
-## Estudo de caso: citricultura brasileira
+## Case study: Brazilian citrus growing
 
-`examples/citros/` traz o material final do estudo original — mapas
-selecionados, apresentação (`.pptx`) e relatório consolidado (`.docx`) — como
-referência do que o pipeline produz e de como a síntese narrativa (etapa
-manual, ver seção 6 do guia de adaptação) pode ser construída em cima dele.
+`examples/citros/` contains the final material from the original study —
+selected maps, a slide deck (`.pptx`), and a consolidated report (`.docx`) —
+as a reference for what the pipeline produces and how the narrative synthesis
+(a manual step, see section 6 of the adaptation guide) can be built on top of it.
 
-O estudo também usou uma terceira fonte, o **Fundecitrus** (inventário de
-árvores citrícolas, específico de laranja em SP/MG) — fora do escopo deste
-framework genérico por não ter equivalente para outras culturas, mas
-documentada no relatório do estudo de caso como enriquecimento opcional.
+The study also drew on a third source, **Fundecitrus** (a citrus-tree
+inventory specific to orange growing in SP/MG) — out of scope for this
+generic framework since it has no equivalent for other crops, but documented
+in the case-study report as an optional enrichment.
 
-## Licença
+## License
 
-MIT — ver [`LICENSE`](LICENSE).
+MIT — see [`LICENSE`](LICENSE).
