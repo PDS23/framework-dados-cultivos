@@ -57,8 +57,8 @@ data/                      — not version-controlled; populated locally when th
 python -m venv .venv && source .venv/bin/activate   # or .venv\Scripts\activate on Windows
 pip install -r requirements.txt
 
-# 1. Download the raw data (see docs/COMO_ADAPTAR_NOVA_CULTURA.md, sections 1-2,
-#    currently in Portuguese) and place it at:
+# 1. Download the raw data (see docs/ADAPT_NEW_CROP.md, sections 1-2)
+#    and place it at:
 #      data/brutos/ibge/laranja/*.xlsx
 #      data/mapbiomas/brutos/MAPBIOMAS_BRAZIL-COL.11-BIOME_STATE_MUNICIPALITY.xlsx
 #    Also download the IBGE municipal shapefile and place it at:
@@ -77,8 +77,8 @@ and the corresponding `relatorios/` folders.
 
 ## Adapting to another crop
 
-See [`docs/COMO_ADAPTAR_NOVA_CULTURA.md`](docs/COMO_ADAPTAR_NOVA_CULTURA.md)
-(currently Portuguese-only) for the full walkthrough: finding the right
+See [`docs/ADAPT_NEW_CROP.md`](docs/ADAPT_NEW_CROP.md)
+for the full walkthrough: finding the right
 SIDRA table, finding the right MapBiomas class, registering it in
 `config/culturas.yaml`, and running the pipeline. `culturas.yaml` already
 ships with ready-made example entries for coffee, soybeans, sugarcane, corn

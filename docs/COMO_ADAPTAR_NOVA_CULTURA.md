@@ -1,5 +1,7 @@
 # Como adaptar o framework para uma nova cultura
 
+🇧🇷 Português | [🇺🇸 English](ADAPT_NEW_CROP.md)
+
 Este guia parte do princípio de que você já rodou o framework para citros (o
 exemplo pronto em `examples/citros/`) e quer aplicá-lo a outra cultura —
 soja, café, cana, milho, algodão, ou qualquer produto agrícola coberto pelo
