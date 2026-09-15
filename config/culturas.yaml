@@ -1,0 +1,84 @@
+# Cadastro de culturas suportadas pelo framework.
+#
+# Cada cultura precisa de:
+#   - nome_sidra: nome exato do produto agrícola no IBGE/SIDRA (Tabela 1613 -
+#     Produção Agrícola Municipal). Usado só como referência/documentação;
+#     o pipeline lê o slug da pasta em data/brutos/ibge/<slug>/, não o nome.
+#   - mapbiomas_classe_codigo / mapbiomas_classe_nome: código e nome da
+#     classe correspondente na Coleção do MapBiomas usada (ver legenda em
+#     https://mapbiomas.org/codigos-de-legenda). Uma cultura pode não ter
+#     classe própria no MapBiomas (fica dentro de uma classe agregada, tipo
+#     "Outras Lavouras Temporárias") — nesse caso a parte MapBiomas não é
+#     aplicável e só roda o pipeline do IBGE.
+#   - uf_recorte: lista de UFs (sigla) usada na "Parte 2" do framework (janela
+#     recente, recorte regional) — normalmente os estados onde a cultura de
+#     fato se concentra. Ajuda a evitar mapas poluídos com o Brasil inteiro
+#     em cinza.
+#   - ano_inicio_ibge: primeiro ano com dado no SIDRA para essa variável
+#     (a série de "área colhida" do PAM geralmente cobre 1974-2024; outras
+#     variáveis como "área destinada à colheita" só existem a partir de 1988
+#     — ver docs/COMO_ADAPTAR_NOVA_CULTURA.md).
+
+culturas:
+  laranja:
+    nome_sidra: "Laranja"
+    mapbiomas_classe_codigo: 47
+    mapbiomas_classe_nome: "Citrus"
+    uf_recorte: [SP, RJ, MG, ES, MT, MS, GO, DF, BA]
+    ano_inicio_ibge: 1974
+
+  limao:
+    nome_sidra: "Limão"
+    mapbiomas_classe_codigo: 47
+    mapbiomas_classe_nome: "Citrus"
+    uf_recorte: [SP, RJ, MG, ES, MT, MS, GO, DF, BA]
+    ano_inicio_ibge: 1974
+
+  tangerina:
+    nome_sidra: "Tangerina"
+    mapbiomas_classe_codigo: 47
+    mapbiomas_classe_nome: "Citrus"
+    uf_recorte: [SP, RJ, MG, ES, MT, MS, GO, DF, BA]
+    ano_inicio_ibge: 1974
+
+  # --- exemplos de outras culturas (config pronta, dados brutos não incluídos
+  #     neste repositório — ver docs/COMO_ADAPTAR_NOVA_CULTURA.md) ---
+  cafe:
+    nome_sidra: "Café (em grão) Total"
+    mapbiomas_classe_codigo: 46
+    mapbiomas_classe_nome: "Café"
+    uf_recorte: [MG, ES, SP, BA, RO, PR]
+    ano_inicio_ibge: 1974
+
+  soja:
+    nome_sidra: "Soja (em grão)"
+    mapbiomas_classe_codigo: 39
+    mapbiomas_classe_nome: "Soja"
+    uf_recorte: [MT, PR, RS, GO, MS, MG, BA]
+    ano_inicio_ibge: 1974
+
+  cana_de_acucar:
+    nome_sidra: "Cana-de-açúcar"
+    mapbiomas_classe_codigo: 20
+    mapbiomas_classe_nome: "Cana"
+    uf_recorte: [SP, GO, MG, MT, PR, MS, AL]
+    ano_inicio_ibge: 1974
+
+  milho:
+    nome_sidra: "Milho (em grão)"
+    mapbiomas_classe_codigo: 41
+    mapbiomas_classe_nome: "Outras Lavouras Temporárias"
+    uf_recorte: [MT, PR, MS, GO, RS, MG]
+    ano_inicio_ibge: 1974
+    observacao: >
+      No MapBiomas (Coleção 11), milho não tem classe própria — cai dentro de
+      "Outras Lavouras Temporárias" (41) junto com outras culturas anuais.
+      A parte MapBiomas desse framework não separa milho dentro dessa classe;
+      use com essa ressalva ou trate só a parte IBGE para essa cultura.
+
+  algodao:
+    nome_sidra: "Algodão herbáceo (em caroço)"
+    mapbiomas_classe_codigo: 62
+    mapbiomas_classe_nome: "Algodão (beta)"
+    uf_recorte: [MT, BA, GO, MS, MG]
+    ano_inicio_ibge: 1974

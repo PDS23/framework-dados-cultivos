@@ -1,0 +1,9 @@
+{
+  "name": "framework-dados-cultivos-relatorios",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gerador de .docx a partir dos relatorios de faixas do pipeline (ver build_docx.js).",
+  "dependencies": {
+    "docx": "^9.0.0"
+  }
+}

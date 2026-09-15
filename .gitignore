@@ -1,0 +1,23 @@
+# Dados locais — brutos, processados, geo, mapas e relatórios gerados pelo
+# pipeline. Tudo isso é recriado rodando os scripts; não faz sentido versionar
+# (fica na casa dos GB para malhas municipais + geojsons por cultura).
+data/
+
+# exceção: mantemos os exemplos curados de citros (poucos MB) versionados
+!examples/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node (relatorios/)
+node_modules/
+package-lock.json
+
+# SO / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
