@@ -29,7 +29,7 @@ IBGE/SIDRA.
 
 ## 2. Confirme a classe correspondente no MapBiomas (opcional)
 
-1. Veja a [legenda de classes da Coleção usada](https://mapbiomas.org/codigos-de-legenda)
+1. Veja a [legenda de classes da Coleção usada](https://brasil.mapbiomas.org/downloads/codigos-de-legenda/)
    (este framework foi construído com a Coleção 11).
 2. Nem toda cultura tem classe própria — culturas anuais menores costumam
    cair em classes agregadas como "Outras Lavouras Temporárias" (41) ou
@@ -40,7 +40,7 @@ IBGE/SIDRA.
 3. Anote o código numérico da classe (ex.: 39 para soja, 46 para café, 20
    para cana, 47 para citros).
 4. O arquivo bruto do MapBiomas (`MAPBIOMAS_BRAZIL-COL.11-BIOME_STATE_MUNICIPALITY.xlsx`,
-   baixado em [mapbiomas.org/download](https://mapbiomas.org/download)) já
+   baixado em [brasil.mapbiomas.org/downloads/estatisticas](https://brasil.mapbiomas.org/downloads/estatisticas/)) já
    cobre **todas** as classes — o mesmo arquivo bruto serve para qualquer
    cultura, não precisa baixar de novo por cultura. Salve-o em
    `data/mapbiomas/brutos/`.

@@ -6,8 +6,8 @@ mapbiomas_classe_codigo) por município, a partir do arquivo bruto de
 Coleção do MapBiomas (cobertura e uso da terra, biomas/estados/municípios).
 
 Entrada: data/mapbiomas/brutos/MAPBIOMAS_BRAZIL-COL.11-BIOME_STATE_MUNICIPALITY.xlsx
-(baixe em https://mapbiomas.org/download, Coleção 11, planilha "biome, state,
-municipality"), aba COVERAGE_11, formato longo (1 linha por município x
+(baixe em https://brasil.mapbiomas.org/downloads/estatisticas/, Coleção 11,
+planilha "biome, state, municipality"), aba COVERAGE_11, formato longo (1 linha por município x
 classe), colunas y<ano>... em hectares.
 
 Um município pode aparecer em mais de uma linha quando seu território cruza

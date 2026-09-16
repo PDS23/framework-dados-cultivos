@@ -30,7 +30,7 @@ covered by IBGE/SIDRA.
 
 ## 2. Confirm the matching class in MapBiomas (optional)
 
-1. Check the [legend of classes for the Collection you're using](https://mapbiomas.org/codigos-de-legenda)
+1. Check the [legend of classes for the Collection you're using](https://brasil.mapbiomas.org/downloads/codigos-de-legenda/)
    (this framework was built with Collection 11).
 2. Not every crop has its own class — smaller annual crops often fall into
    aggregated classes like "Other Temporary Crops" (41) or "Other Perennial
@@ -41,7 +41,7 @@ covered by IBGE/SIDRA.
 3. Note the numeric class code (e.g. 39 for soybeans, 46 for coffee, 20 for
    sugarcane, 47 for citrus).
 4. The MapBiomas raw file (`MAPBIOMAS_BRAZIL-COL.11-BIOME_STATE_MUNICIPALITY.xlsx`,
-   downloaded from [mapbiomas.org/download](https://mapbiomas.org/download))
+   downloaded from [brasil.mapbiomas.org/downloads/estatisticas](https://brasil.mapbiomas.org/downloads/estatisticas/))
    already covers **every** class — the same raw file works for any crop, no
    need to download it again per crop. Save it at `data/mapbiomas/brutos/`.
 
