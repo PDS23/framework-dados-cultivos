@@ -58,7 +58,7 @@ pip install -r requirements.txt
 
 # 1. Baixe os dados brutos (ver docs/COMO_ADAPTAR_NOVA_CULTURA.md, seções 1-2)
 #    e coloque em:
-#      data/brutos/ibge/laranja/*.xlsx
+#      data/brutos/ibge/<slug-da-cultura>/*.xlsx   (ex.: laranja — o slug é a chave em config/culturas.yaml)
 #      data/mapbiomas/brutos/MAPBIOMAS_BRAZIL-COL.11-BIOME_STATE_MUNICIPALITY.xlsx
 #    Baixe também o shapefile de municípios do IBGE e coloque em:
 #      data/geo/malha_municipios_brasil.shp

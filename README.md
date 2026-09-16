@@ -59,7 +59,7 @@ pip install -r requirements.txt
 
 # 1. Download the raw data (see docs/ADAPT_NEW_CROP.md, sections 1-2)
 #    and place it at:
-#      data/brutos/ibge/laranja/*.xlsx
+#      data/brutos/ibge/<crop-slug>/*.xlsx   (e.g. laranja — the slug is the key in config/culturas.yaml)
 #      data/mapbiomas/brutos/MAPBIOMAS_BRAZIL-COL.11-BIOME_STATE_MUNICIPALITY.xlsx
 #    Also download the IBGE municipal shapefile and place it at:
 #      data/geo/malha_municipios_brasil.shp
