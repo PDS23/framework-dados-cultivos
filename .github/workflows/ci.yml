@@ -19,8 +19,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Byte-compile all pipeline scripts (syntax check)
-        run: python -m py_compile executar_pipeline.py $(find src -name "*.py")
+      - name: Byte-compile all Python scripts (syntax check)
+        run: python -m py_compile executar_pipeline.py $(find src db estudos -name "*.py")
 
       - name: Validate config/culturas.yaml loads correctly
         run: |

@@ -5,19 +5,38 @@
 
 🇺🇸 English | [🇧🇷 Português](README.pt-BR.md)
 
-Python framework for analyzing the spatial evolution of any Brazilian
-agricultural crop by cross-referencing two public, nationwide data sources:
+Python + PostGIS framework to analyze the spatial evolution of any Brazilian
+agricultural crop by cross-referencing public, nationwide data sources:
 
-- **IBGE** (SIDRA, Table 1613 — Municipal Agricultural Production): declared
-  survey data, by municipality, with a historical series back to 1974.
-- **MapBiomas** (land use and land cover collection): satellite-imagery
-  classification, by municipality, with a series back to 1985 — but only in
-  the states where the crop's class has any record.
+- **IBGE / SIDRA** — Municipal Agricultural Production (PAM, tables 1612/1613,
+  by municipality, since 1974) and the monthly Systematic Survey of
+  Agricultural Production (LSPA, table 6588, by state). Fetched **directly
+  from the SIDRA API** — no manual download.
+- **MapBiomas** — satellite land-cover classification (Collection 11, by
+  municipality, since 1985), only where the crop's class has any record.
+- **Receita Federal (CNPJ)** — new establishments by CNAE, a leading indicator
+  of where a crop is attracting investment (citrus study only, for now).
 
 Born out of a complete case study on **Brazilian citrus growing** (orange,
-lemon and tangerine) — see `examples/citros/` for the final output (maps,
-tables, and consolidated report). The code was later generalized so it can
-be applied to any other crop covered by both sources.
+lemon and tangerine) — see `examples/citros/`. The code is config-driven, so
+other crops are a few lines in `config/culturas.yaml`.
+
+## How it works
+
+```
+SIDRA API ──► PostGIS (tabular.*) ──► CSV export ──► maps & range reports
+MapBiomas xlsx (manual, for now) ──► CSV ──► maps & range reports
+```
+
+Everything lands in a PostGIS database whose layout follows one convention
+(`db/schema.sql`): `dim` (sources, states, municipalities with geometry,
+crops), `tabular` (one table per source, keyed by IBGE code), `resultados`
+(what we compute, e.g. spatial buffers) and `catalogo` (dataset registry).
+Geometry lives only in the dimensions and is joined by IBGE code.
+
+Crops are modelled as a hierarchy (`dim.cultura`): MapBiomas has a single
+"Citrus" class, so the group `citros` sits above the IBGE species
+`laranja`/`limao`/`tangerina`.
 
 ## Methodology: two windows, two geographic scales
 
@@ -27,88 +46,93 @@ be applied to any other crop covered by both sources.
 | **IBGE** | Since 1974, all of Brazil | Configurable state-level cutout |
 | **MapBiomas** | Since 1985, states with the class | Same cutout, detected automatically |
 
-Core idea: the longest series available in each source is used at national
-scale, to give historical context; the fine-grained comparison (per
-variable, per municipality, with "new producer"/"exited" categories) is only
-done in the recent window and only in the region where production actually
-exists — so the maps aren't cluttered with the whole country greyed out.
-
-Every map product follows the same visual pattern: a line chart indexed to
-100% at the first year of the window, a table of absolute values, and
-choropleth map(s) with a diverging color scale (cool = decline, warm =
-growth).
+The longest series of each source is used at national scale for context; the
+fine-grained comparison (per variable, per municipality, with "new
+producer"/"exited" categories) is done only in the recent window and only
+where production exists, so maps aren't cluttered with a greyed-out country.
 
 ## Repository structure
 
 ```
-config/culturas.yaml       — crop registry (SIDRA name, MapBiomas class, regional cutout)
-src/comum/                 — shared utilities (paths, IPCA deflator, range classification)
-src/ibge/01..06            — IBGE pipeline, in order
-src/mapbiomas/01..05       — MapBiomas pipeline, in order
-relatorios/build_docx.js   — generates .docx from the range-classification tables
-docs/                      — guide for adapting the framework to a new crop
-examples/citros/           — final output of the citrus case study (maps + report + slide deck)
-data/                      — not version-controlled; populated locally when the pipeline runs
+config/culturas.yaml   — crop registry (SIDRA name, MapBiomas class, regional cutout)
+db/                    — schema.sql, dimension/fact loaders, spatial results (SQL)
+src/comum/             — config, DB access, SIDRA API client, IPCA deflator, range classification
+src/ibge/              — IBGE pipeline: 01 ingest (API→PostGIS), 02 export, 03-06 maps/reports
+src/mapbiomas/         — MapBiomas pipeline 01..05
+estudos/citros/        — scripts specific to the citrus study (CNPJ map, expansion regions, LSPA gpkg)
+relatorios/            — build_docx.js (range-classification tables → .docx)
+docs/                  — guide for adapting to a new crop
+examples/citros/       — final output of the citrus study (maps + report + slide deck)
+docker-compose.yml     — local PostGIS
+data/                  — not version-controlled; filled when the pipeline runs
 ```
 
-## How to run it (example: reproducing the citrus study)
+## How to run
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # or .venv\Scripts\activate on Windows
 pip install -r requirements.txt
 
-# 1. Download the raw data (see docs/ADAPT_NEW_CROP.md, sections 1-2)
-#    and place it at:
-#      data/brutos/ibge/<crop-slug>/*.xlsx   (e.g. laranja — the slug is the key in config/culturas.yaml)
-#      data/mapbiomas/brutos/MAPBIOMAS_BRAZIL-COL.11-BIOME_STATE_MUNICIPALITY.xlsx
-#    Also download the IBGE municipal shapefile and place it at:
-#      data/geo/malha_municipios_brasil.shp
+# 1. PostGIS (any PostGIS works; this one is the quickest)
+export PGPASSWORD=choose_a_password                # PowerShell: $env:PGPASSWORD = "..."
+docker compose up -d                               # creates the database and db/schema.sql
 
-# 2. Run the full pipeline for 1 crop
+# 2. IBGE meshes, extracted into data/geo/ (Geociências > Malhas territoriais):
+#      malha_municipios_brasil.shp   (municipalities)    BR_UF_2025.shp   (states)
+python db/01_popular_dimensoes.py
+
+# 3. Full pipeline for 1 crop: SIDRA API -> PostGIS -> maps/reports
 python executar_pipeline.py laranja
+```
 
-# 3. (optional) generate the .docx range-classification reports
+The IBGE stages need nothing downloaded by hand. The MapBiomas stages still
+need the municipal statistics spreadsheet at
+`data/mapbiomas/brutos/MAPBIOMAS_BRAZIL-COL.11-BIOME_STATE_MUNICIPALITY.xlsx`
+(from [brasil.mapbiomas.org/downloads/estatisticas](https://brasil.mapbiomas.org/downloads/estatisticas/));
+automating it is next. Use `--so-ibge` to skip them. Connection settings come
+from `PGPASSWORD` (required) and optionally `PGHOST`, `PGPORT`, `PGUSER`,
+`PGDATABASE`.
+
+`.docx` range reports (optional):
+
+```bash
 cd relatorios && npm install
 node build_docx.js ../data/ibge/relatorios/laranja/faixas_2015_2024.json "Percent change — Orange"
 ```
 
-Outputs land in `data/ibge/mapas/laranja/`, `data/mapbiomas/mapas/laranja/`,
-and the corresponding `relatorios/` folders.
-
 ## Adapting to another crop
 
-See [`docs/ADAPT_NEW_CROP.md`](docs/ADAPT_NEW_CROP.md)
-for the full walkthrough: finding the right
-SIDRA table, finding the right MapBiomas class, registering it in
-`config/culturas.yaml`, and running the pipeline. `culturas.yaml` already
-ships with ready-made example entries for coffee, soybeans, sugarcane, corn
-and cotton (config only; raw data not included in this repository).
+See [`docs/ADAPT_NEW_CROP.md`](docs/ADAPT_NEW_CROP.md): register the crop in
+`config/culturas.yaml` and run the pipeline. Permanent crops (table 1613) and
+temporary crops (table 1612) are both supported by the ingestion; the map
+stages were validated for citrus, and temporary crops report "planted area"
+where citrus has "area destined for harvest" (see the guide).
 
 ## Known limitations
 
-- The two sources measure conceptually different things (declared vs.
-  satellite-detected) — not comparable in absolute value, only in the
-  direction/intensity of the trend.
-- MapBiomas doesn't guarantee a dedicated class for every crop — several
-  smaller annual crops fall into aggregated classes ("Other Temporary/
-  Perennial Crops"). See the adaptation guide.
-- The IBGE municipal mesh changes over time (municipalities are created or
-  merged); the framework uses the most recent mesh for all years, a common
-  simplification in this kind of analysis but worth documenting.
-- Monetary values (IBGE) are deflated using IPCA (`src/comum/deflator_ipca.py`);
-  the ready-made series covers 2015-2024 — extend it for other windows if needed.
+- The sources measure different things (declared vs. satellite-detected): not
+  comparable in absolute value, only in the direction/intensity of the trend.
+- MapBiomas doesn't have a class for every crop; several fall into aggregated
+  classes ("Other Temporary/Perennial Crops").
+- Before 2001, IBGE expressed fruit production in thousand fruits (not
+  tonnes) although the API labels it as tonnes; crops declaring
+  `quebra_unidade_quantidade_ate` in `culturas.yaml` get the correct unit
+  stored in `tabular.ibge_pam.unidade`. Monetary values also change currency
+  over the series (stored per row too) — use the IPCA deflator only for 2015+.
+- The IBGE municipal mesh changes over time; the framework uses the most
+  recent one for all years.
+- LSPA is preliminary and revised monthly; PAM is the final annual figure.
+- CNPJ data comes from Base dos Dados (BigQuery); its free tier covers
+  snapshots up to a cutoff date, later ones are paid.
 
 ## Case study: Brazilian citrus growing
 
-`examples/citros/` contains the final material from the original study —
-selected maps, a slide deck (`.pptx`), and a consolidated report (`.docx`) —
-as a reference for what the pipeline produces and how the narrative synthesis
-(a manual step, see section 6 of the adaptation guide) can be built on top of it.
-
-The study also drew on a third source, **Fundecitrus** (a citrus-tree
-inventory specific to orange growing in SP/MG) — out of scope for this
-generic framework since it has no equivalent for other crops, but documented
-in the case-study report as an optional enrichment.
+`examples/citros/` holds the final material of the original study (maps, slide
+deck, consolidated report). `estudos/citros/` has the second-round analyses
+built on the database: new-company map by municipality, expansion regions
+around chosen seed municipalities (PostGIS `ST_DWithin`), LSPA by state. The
+study also drew on **Fundecitrus** (citrus-tree inventory for SP/MG), out of
+scope for this generic framework.
 
 ## License
 

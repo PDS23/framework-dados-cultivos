@@ -7,26 +7,23 @@ example in `examples/citros/`) and want to apply it to another crop —
 soybeans, coffee, sugarcane, corn, cotton, or any agricultural product
 covered by IBGE/SIDRA.
 
-## 1. Confirm the crop exists in SIDRA (IBGE)
+## 1. Find the crop's name in SIDRA (IBGE)
 
-1. Go to [SIDRA Table 1613](https://sidra.ibge.gov.br/tabela/1613) —
-   Municipal Agricultural Production (Permanent and Temporary Crops).
-2. Under "Produto das lavouras permanentes/temporárias" (crop product),
-   check the exact name of the crop (e.g. "Café (em grão) Total", not just
-   "Café").
-3. Build the query with:
-   - **Variables**: the 8 standard ones (Area destined for harvest,
-     Harvested area, Quantity produced, Average yield, Production value —
-     with and without percentage of the total).
-   - **Territorial level**: Brazil + State (UF) + Municipality (all 3
-     together in one export per level, or split them if SIDRA complains
-     about the size).
-   - **Crop product**: only the crop you want.
-   - **Year**: the whole available period (1974 onward).
-4. Export as xlsx ("Salvar" → planilha). If the full period doesn't fit in
-   one export, download it in chunks (e.g. 20 years at a time) — stage 1 of
-   the pipeline merges multiple files automatically.
-5. Save the file(s) at `data/brutos/ibge/<crop-slug>/`.
+Nothing is downloaded by hand: ingestion pulls the data from the SIDRA API. You
+only need the **product name**; the framework finds the table and the product
+code by itself from the table metadata:
+
+- **Permanent crops** (citrus, coffee, grapes...): Table 1613.
+- **Temporary crops** (soybeans, corn, sugarcane, cotton...): Table 1612.
+
+Check the exact name at [sidra.ibge.gov.br/tabela/1613](https://sidra.ibge.gov.br/tabela/1613)
+or [/1612](https://sidra.ibge.gov.br/tabela/1612) (e.g. "Café (em grão) Total",
+not just "Café"). Matching ignores accents and case. If the name doesn't
+exist, the error lists similar names.
+
+Two differences for temporary crops: IBGE calls the area variable "planted
+area" (instead of "area destined for harvest"), and map stages 04-06 were
+validated for citrus.
 
 ## 2. Confirm the matching class in MapBiomas (optional)
 
@@ -66,29 +63,32 @@ automatic (states where the class has at least 1 record).
 
 ```bash
 pip install -r requirements.txt
-
-# municipal mesh (runs once, shared across all crops — see README)
-# runs automatically inside IBGE's first stage, 03
+export PGPASSWORD=your_password     # PostGIS up and dimensions populated (see README)
 
 python executar_pipeline.py soja
 ```
 
-Or stage by stage (useful for debugging a specific problem):
+Or stage by stage (useful for debugging):
 
 ```bash
-python src/ibge/01_consolidar.py soja
-python src/ibge/02_dividir_csv.py soja
+python src/ibge/01_ingerir_pam.py soja         # SIDRA API -> PostGIS (tabular.ibge_pam)
+python src/ibge/01b_ingerir_lspa.py soja       # monthly LSPA by state, if the crop exists there
+python src/ibge/02_exportar_do_banco.py soja   # CSVs the maps use
 python src/ibge/03_gerar_geojson.py soja
 python src/ibge/04_mapa_evolucao_historica.py soja
 python src/ibge/05_mapa_divergencia_regional.py soja
 python src/ibge/06_relatorio_faixas.py soja
 
-python src/mapbiomas/01_extrair_classe.py soja
+python src/mapbiomas/01_extrair_classe.py soja     # needs the MapBiomas spreadsheet in data/mapbiomas/brutos/
 python src/mapbiomas/02_gerar_geojson.py soja
 python src/mapbiomas/03_mapa_evolucao_historica.py soja
 python src/mapbiomas/04_mapa_divergencia.py soja
 python src/mapbiomas/05_relatorio_faixas.py soja
 ```
+
+Ingestion is idempotent: running again updates the values (IBGE revises the
+previous year when it publishes a new one) instead of duplicating. To refresh
+only the latest years: `python src/ibge/01_ingerir_pam.py soja --anos 2024,2025`.
 
 ## 5. Generate the .docx reports (optional)
 

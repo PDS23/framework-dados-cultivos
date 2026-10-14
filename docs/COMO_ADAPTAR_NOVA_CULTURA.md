@@ -7,25 +7,23 @@ exemplo pronto em `examples/citros/`) e quer aplicá-lo a outra cultura —
 soja, café, cana, milho, algodão, ou qualquer produto agrícola coberto pelo
 IBGE/SIDRA.
 
-## 1. Confirme que a cultura existe no SIDRA (IBGE)
+## 1. Descubra o nome da cultura no SIDRA (IBGE)
 
-1. Acesse a [Tabela 1613 do SIDRA](https://sidra.ibge.gov.br/tabela/1613) —
-   Produção Agrícola Municipal (Lavoura Permanente e Temporária).
-2. Em "Produto das lavouras permanentes/temporárias", confira o nome exato
-   da cultura (ex.: "Café (em grão) Total", não só "Café").
-3. Monte a consulta com:
-   - **Variáveis**: as 8 padrão (Área destinada à colheita, Área colhida,
-     Quantidade produzida, Rendimento médio, Valor da produção — com e sem
-     percentual do total).
-   - **Nível territorial**: Brasil + Unidade da Federação + Município (as 3
-     juntas, numa exportação por nível, ou separe se o SIDRA reclamar do
-     tamanho).
-   - **Produto das lavouras**: só a cultura desejada.
-   - **Ano**: todo o período disponível (1974 em diante).
-4. Exporte em xlsx ("Salvar" → planilha). Se o período completo não couber
-   numa exportação só, baixe em pedaços (por ex. de 20 em 20 anos) — o
-   estágio 1 do pipeline funde múltiplos arquivos automaticamente.
-5. Salve o(s) arquivo(s) em `data/brutos/ibge/<slug-da-cultura>/`.
+Nada é baixado à mão: a ingestão busca os dados na API do SIDRA. Você só
+precisa do **nome do produto**, e o framework acha a tabela e o código sozinho
+consultando os metadados:
+
+- **Lavouras permanentes** (citros, café, uva...): Tabela 1613.
+- **Lavouras temporárias** (soja, milho, cana, algodão...): Tabela 1612.
+
+Confira o nome exato em [sidra.ibge.gov.br/tabela/1613](https://sidra.ibge.gov.br/tabela/1613)
+ou [/1612](https://sidra.ibge.gov.br/tabela/1612) (ex.: "Café (em grão) Total",
+não só "Café"). A comparação ignora acento e caixa. Se o nome não existir, o
+erro lista nomes parecidos.
+
+Duas diferenças das temporárias: o IBGE chama a variável de área de "área
+plantada" (em vez de "área destinada à colheita") e os estágios de mapa 04-06
+foram validados para citros.
 
 ## 2. Confirme a classe correspondente no MapBiomas (opcional)
 
@@ -66,29 +64,32 @@ ficarem poluídos com o Brasil inteiro em cinza. Para o MapBiomas o recorte
 
 ```bash
 pip install -r requirements.txt
-
-# malha municipal (1x só, compartilhada por todas as culturas — ver README)
-# roda automaticamente dentro do primeiro estágio 03 do IBGE
+export PGPASSWORD=sua_senha     # PostGIS no ar e dimensões populadas (ver README)
 
 python executar_pipeline.py soja
 ```
 
-Ou estágio por estágio (útil para depurar um problema específico):
+Ou estágio por estágio (útil para depurar):
 
 ```bash
-python src/ibge/01_consolidar.py soja
-python src/ibge/02_dividir_csv.py soja
+python src/ibge/01_ingerir_pam.py soja         # API do SIDRA -> PostGIS (tabular.ibge_pam)
+python src/ibge/01b_ingerir_lspa.py soja       # LSPA mensal por UF, se a cultura existir lá
+python src/ibge/02_exportar_do_banco.py soja   # CSVs que os mapas usam
 python src/ibge/03_gerar_geojson.py soja
 python src/ibge/04_mapa_evolucao_historica.py soja
 python src/ibge/05_mapa_divergencia_regional.py soja
 python src/ibge/06_relatorio_faixas.py soja
 
-python src/mapbiomas/01_extrair_classe.py soja
+python src/mapbiomas/01_extrair_classe.py soja     # precisa da planilha do MapBiomas em data/mapbiomas/brutos/
 python src/mapbiomas/02_gerar_geojson.py soja
 python src/mapbiomas/03_mapa_evolucao_historica.py soja
 python src/mapbiomas/04_mapa_divergencia.py soja
 python src/mapbiomas/05_relatorio_faixas.py soja
 ```
+
+A ingestão é idempotente: rodar de novo atualiza os valores (o IBGE revisa o
+ano anterior quando publica o novo) em vez de duplicar. Para refrescar só os
+últimos anos: `python src/ibge/01_ingerir_pam.py soja --anos 2024,2025`.
 
 ## 5. Gere os relatórios em .docx (opcional)
 

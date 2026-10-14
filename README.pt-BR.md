@@ -5,108 +5,136 @@
 
 🇧🇷 Português | [🇺🇸 English](README.md)
 
-Framework em Python para analisar a evolução espacial de qualquer cultura
-agrícola brasileira cruzando duas fontes públicas de cobertura nacional:
+Framework em Python + PostGIS para analisar a evolução espacial de qualquer
+cultura agrícola brasileira cruzando fontes públicas de cobertura nacional:
 
-- **IBGE** (SIDRA, Tabela 1613 — Produção Agrícola Municipal): levantamento
-  declarado, por município, com série histórica desde 1974.
-- **MapBiomas** (Coleção de uso e cobertura da terra): classificação por
-  imagem de satélite, por município, com série desde 1985 — mas só nos
-  estados onde a classe da cultura tem registro.
+- **IBGE / SIDRA** — Produção Agrícola Municipal (PAM, tabelas 1612/1613, por
+  município, desde 1974) e Levantamento Sistemático da Produção Agrícola
+  (LSPA, tabela 6588, mensal, por UF). Buscados **direto da API do SIDRA**,
+  sem download manual.
+- **MapBiomas** — classificação de uso e cobertura da terra por satélite
+  (Coleção 11, por município, desde 1985), só nos estados onde a classe da
+  cultura tem registro.
+- **Receita Federal (CNPJ)** — novos estabelecimentos por CNAE, indicador
+  antecedente de onde uma cultura está atraindo investimento (por enquanto só
+  no estudo de citros).
 
-Nasceu de um estudo de caso completo sobre **citricultura** (laranja, limão
-e tangerina) — ver `examples/citros/` para o resultado final (mapas,
-tabelas e relatório consolidado). O código foi generalizado depois para
-poder ser aplicado a qualquer outra cultura com cobertura nas duas fontes.
+Nasceu de um estudo de caso completo sobre **citricultura** (laranja, limão e
+tangerina) — ver `examples/citros/`. O código é guiado por configuração: outra
+cultura são algumas linhas em `config/culturas.yaml`.
+
+## Como funciona
+
+```
+API do SIDRA ──► PostGIS (tabular.*) ──► export CSV ──► mapas e relatórios de faixas
+xlsx do MapBiomas (manual, por enquanto) ──► CSV ──► mapas e relatórios de faixas
+```
+
+Tudo cai num banco PostGIS com um padrão único (`db/schema.sql`): `dim` (fontes,
+estados, municípios com geometria, culturas), `tabular` (uma tabela por fonte,
+chaveada pelo código IBGE), `resultados` (o que a gente calcula, ex.: buffers
+espaciais) e `catalogo` (registro dos datasets). A geometria fica só nas
+dimensões e entra pelo código IBGE.
+
+As culturas formam uma hierarquia (`dim.cultura`): o MapBiomas tem uma única
+classe "Citrus", então o grupo `citros` fica acima das espécies do IBGE
+`laranja`/`limao`/`tangerina`.
 
 ## Metodologia: duas janelas, duas escalas geográficas
 
 | | Janela histórica | Janela recente (2015-2024) |
 |---|---|---|
-| **Escala** | Nacional (ou tão ampla quanto a fonte cobre) | Regional (onde a cultura se concentra) |
+| **Escala** | Nacional (tão longe quanto cada fonte permite) | Regional (onde a cultura se concentra) |
 | **IBGE** | Desde 1974, Brasil inteiro | Recorte configurável por UF |
-| **MapBiomas** | Desde 1985, estados com a classe | Mesmo recorte automático |
+| **MapBiomas** | Desde 1985, estados com a classe | Mesmo recorte, detectado automaticamente |
 
-A ideia central: a série mais longa disponível em cada fonte é usada em
-escala nacional, para dar contexto histórico; a comparação fina (por
-variável, por município, com categorias de "novo produtor"/"saiu") é feita
-só na janela recente e só na região onde a produção de fato existe — assim
-os mapas não ficam poluídos com o país inteiro em cinza.
-
-Cada produto de mapa segue o mesmo padrão visual: gráfico de linha indexado
-a 100% no primeiro ano da janela, tabela de valores absolutos, e mapa(s)
-coropléticos com escala de cor divergente (fria = queda, quente = alta).
+A série mais longa de cada fonte é usada em escala nacional, para dar
+contexto; a comparação fina (por variável, por município, com categorias de
+"novo produtor"/"saiu") é feita só na janela recente e só onde a produção
+existe, para os mapas não ficarem com o país inteiro em cinza.
 
 ## Estrutura do repositório
 
 ```
-config/culturas.yaml       — cadastro de culturas (nome no SIDRA, classe MapBiomas, recorte regional)
-src/comum/                 — utilitários compartilhados (paths, deflator IPCA, classificação em faixas)
-src/ibge/01..06            — pipeline IBGE, na ordem
-src/mapbiomas/01..05       — pipeline MapBiomas, na ordem
-relatorios/build_docx.js   — gera .docx a partir das tabelas de faixas
-docs/                      — guia de adaptação para nova cultura
-examples/citros/           — resultado final do estudo de caso citros (mapas + relatório + apresentação)
-data/                      — não versionado; populado localmente ao rodar o pipeline
+config/culturas.yaml   — cadastro de culturas (nome no SIDRA, classe MapBiomas, recorte regional)
+db/                    — schema.sql, carregadores de dimensões/fatos, resultados espaciais (SQL)
+src/comum/             — config, acesso ao banco, cliente da API do SIDRA, deflator IPCA, classificação em faixas
+src/ibge/              — pipeline IBGE: 01 ingestão (API→PostGIS), 02 exportação, 03-06 mapas/relatórios
+src/mapbiomas/         — pipeline MapBiomas 01..05
+estudos/citros/        — scripts do estudo de citros (mapa de CNPJs, regiões de expansão, gpkg da LSPA)
+relatorios/            — build_docx.js (tabelas de faixas → .docx)
+docs/                  — guia de adaptação para nova cultura
+examples/citros/       — resultado final do estudo de citros (mapas + relatório + apresentação)
+docker-compose.yml     — PostGIS local
+data/                  — não versionado; populado ao rodar o pipeline
 ```
 
-## Como rodar (exemplo: reproduzir citros)
+## Como rodar
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # ou .venv\Scripts\activate no Windows
 pip install -r requirements.txt
 
-# 1. Baixe os dados brutos (ver docs/COMO_ADAPTAR_NOVA_CULTURA.md, seções 1-2)
-#    e coloque em:
-#      data/brutos/ibge/<slug-da-cultura>/*.xlsx   (ex.: laranja — o slug é a chave em config/culturas.yaml)
-#      data/mapbiomas/brutos/MAPBIOMAS_BRAZIL-COL.11-BIOME_STATE_MUNICIPALITY.xlsx
-#    Baixe também o shapefile de municípios do IBGE e coloque em:
-#      data/geo/malha_municipios_brasil.shp
+# 1. PostGIS (qualquer PostGIS serve; este é o mais rápido)
+export PGPASSWORD=escolha_uma_senha                # PowerShell: $env:PGPASSWORD = "..."
+docker compose up -d                               # cria o banco e o db/schema.sql
 
-# 2. Rode o pipeline completo pra 1 cultura
+# 2. Malhas do IBGE, extraídas em data/geo/ (Geociências > Malhas territoriais):
+#      malha_municipios_brasil.shp   (municípios)    BR_UF_2025.shp   (UFs)
+python db/01_popular_dimensoes.py
+
+# 3. Pipeline completo de 1 cultura: API do SIDRA -> PostGIS -> mapas/relatórios
 python executar_pipeline.py laranja
+```
 
-# 3. (opcional) gere os .docx das tabelas de faixas
+Os estágios do IBGE não precisam de nada baixado à mão. Os do MapBiomas ainda
+precisam da planilha de estatísticas municipais em
+`data/mapbiomas/brutos/MAPBIOMAS_BRAZIL-COL.11-BIOME_STATE_MUNICIPALITY.xlsx`
+(de [brasil.mapbiomas.org/downloads/estatisticas](https://brasil.mapbiomas.org/downloads/estatisticas/));
+automatizar isso é o próximo passo. Use `--so-ibge` para pular o MapBiomas. A
+conexão vem de `PGPASSWORD` (obrigatória) e, opcionalmente, `PGHOST`, `PGPORT`,
+`PGUSER`, `PGDATABASE`.
+
+Relatórios `.docx` de faixas (opcional):
+
+```bash
 cd relatorios && npm install
 node build_docx.js ../data/ibge/relatorios/laranja/faixas_2015_2024.json "Variação percentual — Laranja"
 ```
 
-Saídas ficam em `data/ibge/mapas/laranja/`, `data/mapbiomas/mapas/laranja/`
-e nos `relatorios/` correspondentes.
-
 ## Adaptar para outra cultura
 
-Veja [`docs/COMO_ADAPTAR_NOVA_CULTURA.md`](docs/COMO_ADAPTAR_NOVA_CULTURA.md)
-— passo a passo completo: achar a tabela certa no SIDRA, achar a classe
-certa no MapBiomas, cadastrar em `config/culturas.yaml`, rodar. `culturas.yaml`
-já vem com entradas de exemplo prontas para café, soja, cana-de-açúcar,
-milho e algodão (config pronta; dados brutos não incluídos neste repositório).
+Veja [`docs/COMO_ADAPTAR_NOVA_CULTURA.md`](docs/COMO_ADAPTAR_NOVA_CULTURA.md):
+cadastre a cultura em `config/culturas.yaml` e rode o pipeline. A ingestão
+aceita lavouras permanentes (tabela 1613) e temporárias (tabela 1612); os
+estágios de mapa foram validados para citros, e as temporárias trazem "área
+plantada" onde citros tem "área destinada à colheita" (ver o guia).
 
 ## Limitações conhecidas
 
-- As duas fontes medem coisas conceitualmente diferentes (declarado vs.
-  detectado por satélite) — não são comparáveis em valor absoluto, só em
-  direção/intensidade de tendência.
-- O MapBiomas não garante classe própria para toda cultura — várias culturas
-  anuais menores caem em classes agregadas ("Outras Lavouras Temporárias/
-  Perenes"). Ver `docs/COMO_ADAPTAR_NOVA_CULTURA.md`.
-- A malha municipal do IBGE muda ao longo do tempo (criação/fusão de
-  municípios); o framework usa a malha mais recente para todos os anos, o
-  que é uma simplificação comum nesse tipo de análise mas vale documentar.
-- Valores monetários (IBGE) são deflacionados pelo IPCA (`src/comum/deflator_ipca.py`);
-  a série pronta cobre 2015-2024 — estenda-a para outras janelas se precisar.
+- As fontes medem coisas diferentes (declarado vs. detectado por satélite):
+  não são comparáveis em valor absoluto, só em direção/intensidade de tendência.
+- O MapBiomas não tem classe para toda cultura; várias caem em classes
+  agregadas ("Outras Lavouras Temporárias/Perenes").
+- Antes de 2001 o IBGE expressava a produção de frutíferas em mil frutos (não
+  toneladas), embora a API rotule como toneladas; culturas que declaram
+  `quebra_unidade_quantidade_ate` no `culturas.yaml` ganham a unidade correta
+  em `tabular.ibge_pam.unidade`. Valores monetários também mudam de moeda ao
+  longo da série (guardada por linha) — use o deflator IPCA só de 2015 em diante.
+- A malha municipal do IBGE muda ao longo do tempo; o framework usa a mais
+  recente para todos os anos.
+- O LSPA é preliminar e revisado todo mês; o PAM é o fechamento anual.
+- Os dados de CNPJ vêm da Base dos Dados (BigQuery); a cobertura gratuita vai
+  até uma data de corte, as fotografias seguintes são pagas.
 
 ## Estudo de caso: citricultura brasileira
 
-`examples/citros/` traz o material final do estudo original — mapas
-selecionados, apresentação (`.pptx`) e relatório consolidado (`.docx`) — como
-referência do que o pipeline produz e de como a síntese narrativa (etapa
-manual, ver seção 6 do guia de adaptação) pode ser construída em cima dele.
-
-O estudo também usou uma terceira fonte, o **Fundecitrus** (inventário de
-árvores citrícolas, específico de laranja em SP/MG) — fora do escopo deste
-framework genérico por não ter equivalente para outras culturas, mas
-documentada no relatório do estudo de caso como enriquecimento opcional.
+`examples/citros/` traz o material final do estudo original (mapas,
+apresentação, relatório consolidado). `estudos/citros/` tem as análises da
+segunda rodada, feitas em cima do banco: mapa de novas empresas por município,
+regiões de expansão ao redor de municípios-semente (`ST_DWithin` no PostGIS),
+LSPA por UF. O estudo também usou o **Fundecitrus** (inventário de árvores
+citrícolas de SP/MG), fora do escopo deste framework genérico.
 
 ## Licença
 
