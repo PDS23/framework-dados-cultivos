@@ -77,21 +77,32 @@ pip install -r requirements.txt
 export PGPASSWORD=choose_a_password                # PowerShell: $env:PGPASSWORD = "..."
 docker compose up -d                               # creates the database and db/schema.sql
 
-# 2. IBGE meshes, extracted into data/geo/ (Geociências > Malhas territoriais):
-#      malha_municipios_brasil.shp   (municipalities)    BR_UF_2025.shp   (states)
-python db/01_popular_dimensoes.py
-
-# 3. Full pipeline for 1 crop: SIDRA API -> PostGIS -> maps/reports
-python executar_pipeline.py laranja
+# 2. Collect the IBGE data - nothing to download by hand
+python db/01_popular_dimensoes.py --sem-geometria  # state/municipality codes and names, from the IBGE API
+python src/ibge/01_ingerir_pam.py laranja          # PAM, 1974 to the latest year   -> tabular.ibge_pam
+python src/ibge/01b_ingerir_lspa.py laranja        # LSPA, monthly by state         -> tabular.ibge_lspa
 ```
 
-The IBGE stages need nothing downloaded by hand. The MapBiomas stages still
-need the municipal statistics spreadsheet at
+That is all it takes to reproduce the SIDRA collection. Re-running is safe
+(upsert); `--anos 2024,2025` and `--desde 202501` refresh only recent data. The
+crop comes from `config/culturas.yaml`.
+
+For maps, reports and spatial queries you also need geometry:
+
+```bash
+# 3. IBGE meshes extracted into data/geo/ (Geociências > Malhas territoriais):
+#      malha_municipios_brasil.shp   (municipalities)    BR_UF_2025.shp   (states)
+python db/01_popular_dimensoes.py                  # same command, no flag: adds the geometry
+python executar_pipeline.py laranja --so-ibge      # SIDRA -> PostGIS -> maps/reports
+python executar_pipeline.py laranja                # same, plus MapBiomas
+```
+
+The MapBiomas stages still need the municipal statistics spreadsheet at
 `data/mapbiomas/brutos/MAPBIOMAS_BRAZIL-COL.11-BIOME_STATE_MUNICIPALITY.xlsx`
 (from [brasil.mapbiomas.org/downloads/estatisticas](https://brasil.mapbiomas.org/downloads/estatisticas/));
-automating it is next. Use `--so-ibge` to skip them. Connection settings come
-from `PGPASSWORD` (required) and optionally `PGHOST`, `PGPORT`, `PGUSER`,
-`PGDATABASE`.
+automating it is next. Connection settings come from `PGPASSWORD` (required)
+and optionally `PGHOST`, `PGPORT`, `PGUSER`, `PGDATABASE`. If port 5432 is
+taken, set `PG_HOST_PORT` for `docker compose` and `PGPORT` for the scripts.
 
 `.docx` range reports (optional):
 

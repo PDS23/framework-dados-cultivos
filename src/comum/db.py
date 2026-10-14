@@ -59,3 +59,16 @@ def upsert(conn, df, schema, tabela, chave, atualizar, tamanho_lote=5000):
     with conn.connection.cursor() as cur:
         execute_values(cur, sql, linhas, page_size=tamanho_lote)
     return len(linhas)
+
+
+def registra_dataset(conn, nome, nome_fonte, schema_tabela, ano_referencia=None, licenca=None, observacoes=None):
+    """Registra o dataset em catalogo.datasets (1 linha por nome) e atualiza a data da última importação."""
+    conn.execute(
+        text("""
+            INSERT INTO catalogo.datasets (nome, tipo, id_fonte, schema_tabela, ano_referencia, data_importacao, licenca, observacoes)
+            SELECT :nome, 'tabular', (SELECT id_fonte FROM dim.fontes WHERE nome = :fonte), :tabela, :ano, CURRENT_DATE, :lic, :obs
+            WHERE NOT EXISTS (SELECT 1 FROM catalogo.datasets WHERE nome = :nome)
+        """),
+        {"nome": nome, "fonte": nome_fonte, "tabela": schema_tabela, "ano": ano_referencia, "lic": licenca, "obs": observacoes},
+    )
+    conn.execute(text("UPDATE catalogo.datasets SET data_importacao = CURRENT_DATE WHERE nome = :nome"), {"nome": nome})

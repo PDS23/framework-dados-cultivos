@@ -37,18 +37,6 @@ VARIAVEIS = {
 }
 
 
-def meses(inicio, fim):
-    """Lista AAAAMM de `inicio` a `fim` (inclusive)."""
-    ano, mes = divmod(inicio, 100)
-    saida = []
-    while ano * 100 + mes <= fim:
-        saida.append(ano * 100 + mes)
-        mes += 1
-        if mes > 12:
-            ano, mes = ano + 1, 1
-    return saida
-
-
 def ingere(cultura_slug, desde=None):
     cfg = get_cultura(cultura_slug)
     try:
@@ -56,8 +44,7 @@ def ingere(cultura_slug, desde=None):
     except LookupError as e:
         print(f"[{cultura_slug}] Não consta no LSPA (tabela {TABELA}); estágio ignorado. ({e})")
         return
-    inicio, fim = sidra_api.periodo_inicial_final(TABELA)
-    periodos = meses(max(inicio, desde or inicio), fim)
+    periodos = [p for p in sidra_api.periodos(TABELA, CLASSIFICACAO_PRODUTO, categoria) if int(p) >= (desde or 0)]
 
     eng = db.engine()
     with eng.begin() as conn:
@@ -90,6 +77,8 @@ def ingere(cultura_slug, desde=None):
         n = db.upsert(conn, df, "tabular", "ibge_lspa",
                       chave=["id_estado", "id_cultura", "ano", "mes", "variavel"],
                       atualizar=["valor", "unidade", "id_fonte", "importado_em"])
+        db.registra_dataset(conn, f"IBGE LSPA - {cultura_slug} (UF, mensal)", "IBGE", "tabular.ibge_lspa", licenca="Dados abertos IBGE",
+                            observacoes=f"SIDRA tabela {TABELA}, {periodos[0]}-{periodos[-1]}, estimativas mensais preliminares por UF, via API")
     print(f"[{cultura_slug}] Concluído: {n} valores em tabular.ibge_lspa")
 
 

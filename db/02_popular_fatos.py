@@ -53,6 +53,8 @@ def popula_mapbiomas(eng, cultura):
             "area_ha": longo["area_ha"].astype(float), "id_fonte": id_fonte, "importado_em": HOJE,
         })
         n = db.upsert(conn, longo, "tabular", "mapbiomas_cobertura", chave=["id_municipio", "id_cultura", "ano"], atualizar=["area_ha", "id_fonte", "importado_em"])
+        db.registra_dataset(conn, "MapBiomas Colecao 11 - classe Citrus (municipio)", "MapBiomas", "tabular.mapbiomas_cobertura",
+                            licenca="MapBiomas (CC BY-SA)", observacoes="Estatisticas municipais da Colecao 11, area em hectares da classe da cultura")
     print(f"tabular.mapbiomas_cobertura: {n} linhas gravadas.")
 
 
@@ -86,6 +88,15 @@ def popula_cnpj(eng, cultura, csv):
         })
         n = db.upsert(conn, final, "tabular", "receita_federal_cnpj", chave=["cnpj"],
                       atualizar=[c for c in final.columns if c != "cnpj"])
+        nome = "Receita Federal - CNPJs CNAE 0131-8/00 (laranja)"
+        db.registra_dataset(conn, nome, "Receita Federal", "tabular.receita_federal_cnpj", licenca="Dados publicos (Base dos Dados/BigQuery)",
+                            observacoes="Estabelecimentos novos por CNPJ, grao fino")
+        conn.execute(text("""
+            UPDATE catalogo.datasets SET cobertura = (
+                SELECT ST_Multi(ST_Union(m.geom)) FROM dim.municipios m
+                WHERE m.id_municipio IN (SELECT DISTINCT id_municipio FROM tabular.receita_federal_cnpj))
+            WHERE nome = :nome
+        """), {"nome": nome})
     print(f"tabular.receita_federal_cnpj: {n} linhas gravadas.")
 
 

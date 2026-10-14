@@ -6,7 +6,7 @@ arquivo precisa ser baixado à mão.
 
 - Lavouras permanentes estão na Tabela 1613 e as temporárias na 1612. A tabela
   e o código do produto são resolvidos pelo `nome_sidra` de config/culturas.yaml,
-  consultando os metadados (opcionalmente fixe com `sidra_tabela_pam`).
+  consultando a própria API (opcionalmente fixe com `sidra_tabela_pam`).
 - Uma requisição por ano (8 variáveis x todos os municípios), gravada também
   em data/brutos/ibge_sidra/pam_<cultura>/<ano>.json.gz com a data de coleta.
 - Idempotente: reprocessar um ano atualiza as linhas (o IBGE revisa o ano
@@ -100,8 +100,8 @@ def ingere(cultura_slug, anos=None):
     cfg = get_cultura(cultura_slug)
     tabela, categoria = resolve_tabela(cfg)
     info = TABELAS[tabela]
-    _, ultimo_ano = sidra_api.periodo_inicial_final(tabela)
-    anos = anos or list(range(cfg.get("ano_inicio_ibge", 1974), ultimo_ano + 1))
+    disponiveis = [int(p) for p in sidra_api.periodos(tabela, info["classificacao"], categoria)]
+    anos = anos or [a for a in disponiveis if a >= cfg.get("ano_inicio_ibge", 1974)]
     quebra_ate = cfg.get("quebra_unidade_quantidade_ate")
 
     eng = db.engine()
@@ -123,6 +123,9 @@ def ingere(cultura_slug, anos=None):
         total += n
         aviso = f" ({fora} valores de municípios fora de dim.municipios)" if fora else ""
         print(f"[{cultura_slug}] {ano}: {n} valores gravados{aviso}")
+    with eng.begin() as conn:
+        db.registra_dataset(conn, f"IBGE PAM - {cultura_slug} (municipio)", "IBGE", "tabular.ibge_pam", licenca="Dados abertos IBGE",
+                            observacoes=f"SIDRA tabela {tabela}, {anos[0]}-{anos[-1]}, {len(info['variaveis'])} variaveis, via API")
     print(f"[{cultura_slug}] Concluído: {total} valores em tabular.ibge_pam")
 
 

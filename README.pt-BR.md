@@ -79,21 +79,32 @@ pip install -r requirements.txt
 export PGPASSWORD=escolha_uma_senha                # PowerShell: $env:PGPASSWORD = "..."
 docker compose up -d                               # cria o banco e o db/schema.sql
 
-# 2. Malhas do IBGE, extraídas em data/geo/ (Geociências > Malhas territoriais):
-#      malha_municipios_brasil.shp   (municípios)    BR_UF_2025.shp   (UFs)
-python db/01_popular_dimensoes.py
-
-# 3. Pipeline completo de 1 cultura: API do SIDRA -> PostGIS -> mapas/relatórios
-python executar_pipeline.py laranja
+# 2. Coleta dos dados do IBGE - nada para baixar à mão
+python db/01_popular_dimensoes.py --sem-geometria  # códigos e nomes de UFs/municípios, pela API do IBGE
+python src/ibge/01_ingerir_pam.py laranja          # PAM, de 1974 ao último ano     -> tabular.ibge_pam
+python src/ibge/01b_ingerir_lspa.py laranja        # LSPA, mensal por UF            -> tabular.ibge_lspa
 ```
 
-Os estágios do IBGE não precisam de nada baixado à mão. Os do MapBiomas ainda
-precisam da planilha de estatísticas municipais em
+Só isso reproduz a coleta do SIDRA. Rodar de novo é seguro (upsert);
+`--anos 2024,2025` e `--desde 202501` atualizam só os dados recentes. A cultura
+vem de `config/culturas.yaml`.
+
+Para mapas, relatórios e consultas espaciais é preciso também a geometria:
+
+```bash
+# 3. Malhas do IBGE extraídas em data/geo/ (Geociências > Malhas territoriais):
+#      malha_municipios_brasil.shp   (municípios)    BR_UF_2025.shp   (UFs)
+python db/01_popular_dimensoes.py                  # o mesmo comando, sem a flag: adiciona a geometria
+python executar_pipeline.py laranja --so-ibge      # SIDRA -> PostGIS -> mapas/relatórios
+python executar_pipeline.py laranja                # idem, mais o MapBiomas
+```
+
+Os estágios do MapBiomas ainda precisam da planilha de estatísticas municipais em
 `data/mapbiomas/brutos/MAPBIOMAS_BRAZIL-COL.11-BIOME_STATE_MUNICIPALITY.xlsx`
 (de [brasil.mapbiomas.org/downloads/estatisticas](https://brasil.mapbiomas.org/downloads/estatisticas/));
-automatizar isso é o próximo passo. Use `--so-ibge` para pular o MapBiomas. A
-conexão vem de `PGPASSWORD` (obrigatória) e, opcionalmente, `PGHOST`, `PGPORT`,
-`PGUSER`, `PGDATABASE`.
+automatizar isso é o próximo passo. A conexão vem de `PGPASSWORD` (obrigatória)
+e, opcionalmente, `PGHOST`, `PGPORT`, `PGUSER`, `PGDATABASE`. Se a porta 5432
+estiver ocupada, use `PG_HOST_PORT` no `docker compose` e `PGPORT` nos scripts.
 
 Relatórios `.docx` de faixas (opcional):
 
