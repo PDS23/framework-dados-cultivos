@@ -1,9 +1,14 @@
 # Cadastro de culturas suportadas pelo framework.
 #
 # Cada cultura precisa de:
-#   - nome_sidra: nome exato do produto agrícola no IBGE/SIDRA (Tabela 1613 -
-#     Produção Agrícola Municipal). Usado só como referência/documentação;
-#     o pipeline lê o slug da pasta em data/brutos/ibge/<slug>/, não o nome.
+#   - nome_sidra: nome do produto agrícola no IBGE/SIDRA (Tabela 1613 -
+#     Produção Agrícola Municipal). A ingestão consulta os metadados da tabela
+#     e resolve o código do produto por esse nome (ignora acento e caixa).
+#   - quebra_unidade_quantidade_ate (opcional): para frutíferas, o IBGE
+#     expressava quantidade produzida em "mil frutos" e rendimento em "frutos
+#     por hectare" até 2000 (nota 2 da tabela), mas a API rotula tudo como
+#     toneladas / kg por hectare. Com essa chave, a ingestão grava a unidade
+#     correta nesses anos.
 #   - mapbiomas_classe_codigo / mapbiomas_classe_nome: código e nome da
 #     classe correspondente na Coleção do MapBiomas usada (ver legenda em
 #     https://mapbiomas.org/codigos-de-legenda). Uma cultura pode não ter
@@ -22,6 +27,7 @@
 culturas:
   laranja:
     nome_sidra: "Laranja"
+    quebra_unidade_quantidade_ate: 2000
     mapbiomas_classe_codigo: 47
     mapbiomas_classe_nome: "Citrus"
     uf_recorte: [SP, RJ, MG, ES, MT, MS, GO, DF, BA]
@@ -29,6 +35,7 @@ culturas:
 
   limao:
     nome_sidra: "Limão"
+    quebra_unidade_quantidade_ate: 2000
     mapbiomas_classe_codigo: 47
     mapbiomas_classe_nome: "Citrus"
     uf_recorte: [SP, RJ, MG, ES, MT, MS, GO, DF, BA]
@@ -36,6 +43,7 @@ culturas:
 
   tangerina:
     nome_sidra: "Tangerina"
+    quebra_unidade_quantidade_ate: 2000
     mapbiomas_classe_codigo: 47
     mapbiomas_classe_nome: "Citrus"
     uf_recorte: [SP, RJ, MG, ES, MT, MS, GO, DF, BA]

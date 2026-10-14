@@ -9,9 +9,12 @@ Uso:
     python executar_pipeline.py laranja --so-ibge         # só IBGE
     python executar_pipeline.py laranja --so-mapbiomas    # só MapBiomas (precisa da malha já gerada por algum IBGE antes)
 
-Cada estágio imprime o que está fazendo; se um estágio falhar (ex.: dado
-bruto faltando), o script para e mostra o erro — rode o estágio anterior
-que falta antes de tentar de novo.
+O estágio IBGE 01 busca os dados direto da API do SIDRA e grava no PostGIS
+(precisa de PGPASSWORD no ambiente e do schema de db/schema.sql já criado);
+o 02 reexporta do banco os CSVs que os mapas usam.
+
+Cada estágio imprime o que está fazendo; se um estágio falhar, o script para
+e mostra o erro — corrija e rode de novo (a ingestão é idempotente).
 """
 import argparse
 import sys
@@ -26,8 +29,9 @@ def roda_ibge(cultura_slug):
     import importlib
     print(f"\n=== IBGE — {cultura_slug} ===")
     etapas = [
-        ("01_consolidar", "consolida"),
-        ("02_dividir_csv", "divide"),
+        ("01_ingerir_pam", "ingere"),
+        ("01b_ingerir_lspa", "ingere"),
+        ("02_exportar_do_banco", "exporta"),
         ("03_gerar_geojson", "gera_geojsons"),
         ("04_mapa_evolucao_historica", "gera_mapa"),
         ("05_mapa_divergencia_regional", "gera_mapa"),

@@ -42,8 +42,6 @@ def cultura(slug):
 def paths_ibge(cultura_slug):
     base = DATA / "ibge"
     return {
-        "brutos": base / "brutos" / cultura_slug,
-        "consolidado": base / "consolidado" / f"{cultura_slug}.xlsx",
         "processado": base / "processado" / cultura_slug,
         "geojson": base / "geojson" / cultura_slug,
         "mapas": base / "mapas" / cultura_slug,

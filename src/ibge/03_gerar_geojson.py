@@ -76,7 +76,7 @@ def gera_geojsons(cultura_slug):
 
     csvs = sorted(glob.glob(str(paths["processado"] / "*.csv")))
     if not csvs:
-        raise FileNotFoundError(f"Nenhum CSV em {paths['processado']} — rode 02_dividir_csv.py antes.")
+        raise FileNotFoundError(f"Nenhum CSV em {paths['processado']} — rode 02_exportar_do_banco.py antes.")
 
     for csv_path in csvs:
         var_slug = os.path.splitext(os.path.basename(csv_path))[0]
