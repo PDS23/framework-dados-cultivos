@@ -1,6 +1,6 @@
--- Calcula resultados.expansao_regional via consulta espacial (ST_DWithin, em
--- geography, distâncias em metros): para cada município-semente, os municípios
--- dentro de raio_km, cruzando PAM (laranja, área colhida), MapBiomas (citros) e
+-- Calcula resultados.expansao_regional via consulta espacial (buffer métrico +
+-- ST_Intersects indexado; distância em km em EPSG:5880): para cada município-semente,
+-- os municípios dentro de raio_km, cruzando PAM (laranja, área colhida), MapBiomas (citros) e
 -- novos CNPJs. Municípios-semente e raio ficam na CTE `sementes` abaixo.
 -- Relatório/mapa: estudos/citros/relatorio_regioes_expansao.py
 
@@ -13,16 +13,23 @@ WITH sementes (municipio_semente, raio_km) AS (
         ('5209705', 60.0),  -- Hidrolândia (GO)
         ('5006309', 60.0)   -- Paranaíba (MS)
 ),
-vizinhos AS (
-    SELECT
-        s.municipio_semente,
-        s.raio_km,
-        m.id_municipio,
-        (m.id_municipio = s.municipio_semente) AS eh_semente,
-        ROUND((ST_Distance(sem.geom::geography, m.geom::geography) / 1000)::numeric, 1) AS distancia_km
+zonas AS (
+    -- zona de influência: buffer da semente em projeção métrica (EPSG:5880, SIRGAS 2000 /
+    -- Brazil Polyconic), de volta para 4674 para poder usar o índice GIST dos municípios
+    SELECT s.municipio_semente, s.raio_km, sem.geom AS geom_semente,
+           ST_Transform(ST_Buffer(ST_Transform(sem.geom, 5880), s.raio_km * 1000), 4674) AS zona
     FROM sementes s
     JOIN dim.municipios sem ON sem.id_municipio = s.municipio_semente
-    JOIN dim.municipios m ON ST_DWithin(sem.geom::geography, m.geom::geography, s.raio_km * 1000)
+),
+vizinhos AS (
+    SELECT
+        z.municipio_semente,
+        z.raio_km,
+        m.id_municipio,
+        (m.id_municipio = z.municipio_semente) AS eh_semente,
+        ROUND((ST_Distance(ST_Transform(z.geom_semente, 5880), ST_Transform(m.geom, 5880)) / 1000)::numeric, 1) AS distancia_km
+    FROM zonas z
+    JOIN dim.municipios m ON ST_Intersects(m.geom, z.zona)
 ),
 pam AS (
     SELECT id_municipio,
