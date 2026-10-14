@@ -1,0 +1,19 @@
+# PostGIS local para o framework. Uso:
+#   export PGPASSWORD=uma_senha_sua      (PowerShell: $env:PGPASSWORD = "uma_senha_sua")
+#   docker compose up -d
+# O schema (db/schema.sql) é criado automaticamente na primeira subida.
+services:
+  postgis:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_PASSWORD: ${PGPASSWORD:?defina PGPASSWORD antes de subir}
+      POSTGRES_DB: framework_dados_cultivos
+    ports:
+      - "${PG_HOST_PORT:-5432}:5432"   # mude PG_HOST_PORT se a 5432 já estiver ocupada
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # prefixo 20_ para rodar depois do script do PostGIS (10_postgis.sh) da imagem
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/20_schema.sql:ro
+
+volumes:
+  pgdata:
